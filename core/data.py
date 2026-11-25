@@ -186,8 +186,10 @@ KONDISI_NORMAL = "Normal"
 KONDISI_SERING = "Sering Ada Kendala"
 KONDISI_TIDAK = "Tidak Dilakukan"
 KONDISI_OPTIONS = [KONDISI_NORMAL, "Kadang Ada Kendala", KONDISI_SERING, KONDISI_TIDAK]  # empat pilihan petunjuk formulir
-ARRIVAL_PAGI = "07.00–08.00 — Pagi"
-OPENING_ARRIVAL_OPTIONS = [ARRIVAL_PAGI]  # kedatangan kelapa hanya pagi (Formulir bagian B tahap 1)
+ARRIVAL_PAGI = "07.00 (Pagi)"
+ARRIVAL_SORE = "18.00 (Sore)"
+OPENING_ARRIVAL_OPTIONS = [ARRIVAL_PAGI, ARRIVAL_SORE]  # formulir hanya mencatat pagi; sore tersedia sebagai pilihan
+ARRIVAL_SHIFT = {ARRIVAL_PAGI: 1, ARRIVAL_SORE: 2}
 
 # ---- Batas setiap tahap (Formulir Pengumpulan Data bagian B, basis 10 ton).
 # no -> (jam mulai, jam selesai/batas, durasi standar dalam menit, pemantau). Jam berlaku untuk Shift I (shift pagi yang diisi narasumber);

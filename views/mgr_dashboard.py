@@ -93,6 +93,33 @@ if who == data.PM:
     if confirmed:
         ui.go("views/mgr_gm.py", f"Teruskan ke {data.GM}", ":material/forward_to_inbox:")
 
+    st.subheader("Semua tindak lanjut (PPIC, QC, QA, Production Manager)")
+    names = {data.RT_PPIC: "PPIC", data.RT_PM: "Production Manager", data.RT_QC: "QC", data.RT_QA: "QA"}
+    rows = []
+    for r in records:
+        for key, fu in r.get("followups", {}).items():
+            rows.append({
+                "Tahap": data.stage_label(r["stage_no"]),
+                "Shift": data.shift_name(r["shift"]),
+                "Tingkat Risiko": r["level"],
+                "Pihak": names.get(key, key),
+                "Status": fu["status"],
+                "Catatan": (fu.get("note") or "—") + (f" ({fu['decision']})" if fu.get("decision") else ""),
+                "Gambar": len(fu.get("images") or []),
+            })
+    if rows:
+        ui.table(pd.DataFrame(rows), badge_cols=("Tingkat Risiko", "Status"))
+        for r in records:
+            for key in (data.RT_QC, data.RT_QA):
+                fu = r.get("followups", {}).get(key)
+                if fu and fu.get("images"):
+                    with st.expander(f"Gambar {names[key]} — {data.stage_label(r['stage_no'])}"):
+                        ui.images_block(fu["images"])
+    else:
+        ui.empty_state("Belum ada tindak lanjut", "Muncul setelah Supervisor mengonfirmasi data Kuning atau Merah.")
+    st.subheader("Data 18 tahap")
+    ui.overview_table(state.overview_df(cycle, actions=False))
+
 elif who == data.PPIC:
     ui.page_header("Dashboard PPIC", )
     kuning = state.followups_for(data.PPIC, cycle)
@@ -149,14 +176,14 @@ elif who == data.QA:
     st.subheader("Temuan mutu")
     if qa:
         ui.table(_fu_rows(qa, with_images=True), badge_cols=("Tingkat Risiko", "Status"))
-        ui.go("views/mgr_tindak_lanjut.py", "Buka Keputusan Mutu", ":material/assignment_late:")
         for rec, fu in qa:
             qc_fu = rec["followups"].get(data.RT_QC, {})
             if qc_fu.get("images"):
                 with st.expander(f"Gambar bukti QC — {data.stage_label(rec['stage_no'])}"):
                     ui.images_block(qc_fu["images"])
     else:
-        ui.empty_state("Belum ada temuan", "Temuan muncul setelah QC mencatat pemeriksaan mutu dan meneruskannya ke QA.")
+        ui.empty_state("Belum ada temuan", "Temuan muncul setelah QC menyimpan pemeriksaan mutu beserta fotonya.")
+    ui.go("views/mgr_tindak_lanjut.py", "Buka Keputusan Mutu (input keputusan dan foto)", ":material/add_a_photo:")
     _reports_block()
 
 elif who == data.QC:
@@ -185,8 +212,8 @@ elif who == data.QC:
         min_width=200,
     )
     ui.table(pd.DataFrame(rows), badge_cols=("Status Supervisor", "Tingkat Risiko", "Pemeriksaan QC"))
-    if qc:
-        ui.go("views/mgr_tindak_lanjut.py", "Buka Pemeriksaan Mutu", ":material/assignment_late:")
+    st.caption("Data Merah Tahap 08, 12, atau 18 yang sudah dikonfirmasi Supervisor masuk ke Pemeriksaan Mutu, lalu diteruskan ke QA.")
+    ui.go("views/mgr_tindak_lanjut.py", "Buka Pemeriksaan Mutu (input temuan dan foto)", ":material/add_a_photo:")
 
 else:
     ui.page_header("Dashboard Manajemen", "")

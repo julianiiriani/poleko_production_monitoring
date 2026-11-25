@@ -418,6 +418,10 @@ def input_fields(prefix, stage_no, d=None, shift=None):
         hari = c2.number_input("Lama Penyimpanan (hari)", min_value=0, max_value=30, value=d.get("hari"), step=1, key=f"{prefix}_hari")
     else:
         end = c2.time_input("Waktu Selesai", value=_to_time(d.get("end")), step=300, key=f"{prefix}_end")
+    arrival = None
+    if stage_no == data.OPENING_STAGE:
+        arrival = st.selectbox("Kedatangan Bahan Baku", data.OPENING_ARRIVAL_OPTIONS, index=_index(data.OPENING_ARRIVAL_OPTIONS, d.get("arrival")),
+                               placeholder="Pilih", key=f"{prefix}_arr")
     kg = st.number_input("Jumlah Produksi (kg)", min_value=0.0, value=d.get("jumlah_kg"), step=1.0, format="%.2f", key=f"{prefix}_kg")
     c3, c4 = st.columns(2)
     pelaksana = c3.selectbox("Pelaksana/Pemantau", data.PELAKSANA_OPTIONS, index=_index(data.PELAKSANA_OPTIONS, d.get("pelaksana")),
@@ -433,7 +437,7 @@ def input_fields(prefix, stage_no, d=None, shift=None):
         "end": end.strftime("%H:%M") if end else None,
         "overnight": False,
         "hari": int(hari) if hari not in (None, "") else None,
-        "arrival": data.ARRIVAL_PAGI if stage_no == data.OPENING_STAGE else None,
+        "arrival": arrival,
         "jumlah_kg": kg,
         "pelaksana": pelaksana,
         "kondisi": kondisi,

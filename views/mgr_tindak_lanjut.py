@@ -14,9 +14,17 @@ cycle = state.active_cycle()
 TITLE = {data.PM: "Kendala Mesin", data.PPIC: "Data di Luar Batas", data.QC: "Pemeriksaan Mutu", data.QA: "Keputusan Mutu"}
 ui.page_header(TITLE.get(who, "Tindak Lanjut Data"))
 
+EMPTY = {
+    data.QC: "Data Merah Tahap 08, 12, atau 18 muncul di sini setelah dikonfirmasi Supervisor. Temuan dan foto diisi di halaman ini.",
+    data.QA: "Temuan muncul di sini setelah QC menyimpan pemeriksaan mutu beserta fotonya.",
+    data.PPIC: "Data waktu, durasi, atau jumlah di luar batas muncul di sini setelah dikonfirmasi Supervisor.",
+    data.PM: "Data kerusakan mesin atau Sering Ada Kendala muncul di sini setelah dikonfirmasi Supervisor.",
+}
+NEXT = {data.QC: "QA", data.QA: "Production Manager", data.PPIC: "Production Manager", data.PM: "General Manager (bersama laporan gabungan)"}
+
 items = state.followups_for(who, cycle)
 if not items:
-    ui.empty_state("Belum ada data", "Data muncul setelah Supervisor memeriksa input yang diarahkan kepada Anda.")
+    ui.empty_state("Belum ada data", EMPTY.get(who, ""))
     st.stop()
 
 items = sorted(items, key=lambda x: (x[1]["status"] != data.F_MENUNGGU, x[0]["stage_no"]))
@@ -26,10 +34,9 @@ for rec, fu in items:
         st.markdown(f"**{data.stage_label(no)}** &nbsp; {ui.badge(rec['level'])} &nbsp; {ui.badge(fu['status'])}", unsafe_allow_html=True)
         ui.kv(
             [
-                ("Shift", data.shift_label(rec["shift"])),
-                ("Diperiksa Supervisor", f"{rec['confirmed_by']} · {rec['confirmed_at']}" if rec["confirmed_by"] else "—"),
-                ("Diarahkan pada", fu["at"]),
-                ("Pekerja", rec["worker_name"]),
+                ("Diterima dari", f"{fu['from']} · {fu['at']}"),
+                ("Diteruskan ke", NEXT.get(who, "—")),
+                ("Pekerja", f"{rec['worker_name']} · {data.shift_name(rec['shift'])}"),
             ]
         )
         for i in rec.get("issues", []):
@@ -56,7 +63,7 @@ for rec, fu in items:
         images = []
         if who in (data.QC, data.QA):  # fitur unggah gambar hanya untuk QC dan QA
             files = st.file_uploader(
-                "Unggah gambar bukti (JPG/PNG)" + (" — wajib" if who == data.QC else " — opsional"),
+                "Unggah Foto" + (" (wajib)" if who == data.QC else " (opsional)"),
                 type=["jpg", "jpeg", "png"], accept_multiple_files=True, key=f"{key}_img",
             )
             images = [(f.name, f.getvalue()) for f in (files or [])]

@@ -358,8 +358,12 @@ def validate_fields(f, stage_no, shift=None):
     storage = stage_no == data.STORAGE_STAGE
     if not f.get("start"):
         errors.append("Waktu mulai wajib diisi.")
-    elif stage_no == data.OPENING_STAGE and shift != 1:
-        errors.append("Tahap 01 hanya pagi, pukul 07.00–08.00.")
+    if stage_no == data.OPENING_STAGE:
+        arr = f.get("arrival")
+        if arr not in data.OPENING_ARRIVAL_OPTIONS:
+            errors.append("Kedatangan bahan baku wajib dipilih.")
+        elif f.get("start") and data.ARRIVAL_SHIFT[arr] != shift:
+            errors.append(f"Waktu mulai tidak sesuai dengan kedatangan {arr}.")
     if storage:
         if f.get("hari") in (None, ""):
             errors.append("Lama penyimpanan (hari) wajib diisi.")
@@ -394,7 +398,8 @@ def _normalize(fields, stage_no, shift=None):
     else:
         f["kendala"] = (f.get("kendala") or "").strip()
         f["mesin"] = bool(f.get("mesin"))
-    f["arrival"] = data.ARRIVAL_PAGI if stage_no == data.OPENING_STAGE else None
+    if stage_no != data.OPENING_STAGE:
+        f["arrival"] = None
     if stage_no == data.STORAGE_STAGE:
         f["end"], f["overnight"] = None, False
     else:
