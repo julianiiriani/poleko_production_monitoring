@@ -9,21 +9,41 @@ HOME = {
 }
 GROUP_TITLE = {
     data.ROLE_PEKERJA: "Pekerja Produksi",
-    data.ROLE_SPV: "SPV Produksi",
+    data.ROLE_SPV: "Supervisor",
     data.ROLE_MANAJER: "Manajemen",
 }
 
-ui.brand(sidebar=False, width=210)
 _, center, _ = st.columns([1, 1.6, 1])
 with center:
+    ui.brand(sidebar=False, width=210)
     with st.container(border=True):
-        st.markdown("#### Login")
+        st.markdown(
+            """<style>
+            .st-key-login_role { width: 100%; margin-bottom: -0.6rem; }
+            .st-key-login_role [data-testid="stRadio"], .st-key-login_role > div { gap: 0.25rem; padding-bottom: 0; }
+            .st-key-login_title { margin-bottom: 0.5rem; }
+            .st-key-login_title p { margin: 0; }
+            .st-key-login_role [data-testid="stWidgetLabel"] { width: 100%; justify-content: center; margin-bottom: 0.5rem; }
+            .st-key-login_role [data-testid="stWidgetLabel"] * { text-align: center; }
+            .st-key-login_role [role="radiogroup"] {
+                width: 100%; justify-content: center; align-items: center;
+                column-gap: 1.25rem; row-gap: 0.25rem; flex-wrap: wrap;
+            }
+            .st-key-login_role [role="radiogroup"] > label { margin: 0; }
+            </style>""",
+            unsafe_allow_html=True,
+        )
+        with st.container(key="login_title"):
+            st.markdown(
+                "<div style='width:100%;text-align:center;font-size:1.5rem;font-weight:700;line-height:1.3'>Login</div>",
+                unsafe_allow_html=True,
+            )
         role = st.radio("Masuk sebagai", data.ROLES, format_func=GROUP_TITLE.get, horizontal=True, key="login_role")
         ids = data.LOGIN_GROUPS[role]
         account = st.selectbox(
             "Akun",
             ids,
-            index=0 if len(ids) == 1 else None,  # satu-satunya akun (SPV) langsung terpilih
+            index=None,
             placeholder="Pilih akun",
             format_func=lambda i: data.DEMO_ACCOUNTS[i]["label"],
             key=f"login_acc_{role}",
@@ -38,4 +58,3 @@ with center:
             else:
                 state.sign_in(account)
                 st.switch_page(HOME[acc["role"]])
-    st.caption("Prototype demonstrasi: login ini bukan sistem keamanan produksi.")

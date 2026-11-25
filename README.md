@@ -100,3 +100,17 @@ tepinya tanpa mengubah bentuk. Selama file belum ada, aplikasi hanya menampilkan
 - Istilah status tahapan: Belum Dicatat → Menunggu Pemeriksaan SPV → Perlu Perbaikan oleh Pekerja → Menunggu Pemeriksaan Ulang SPV → Dikonfirmasi SPV.
   Status laporan gabungan: Laporan Gabungan Dihasilkan → Menunggu Pemeriksaan Manajemen → (Perlu Perbaikan oleh SPV → Menunggu Pemeriksaan Ulang
   Manajemen) → Dikonfirmasi Manajemen → Diterima General Manager (DEMO).
+
+## Revisi pasca sidang (26 November 2026)
+
+Mengikuti **Aturan Main Sistem** yang disetujui (Formulir Pengumpulan Data dan Struktur Organisasi Bagian Produksi yang baru).
+
+- **Supervisor I, II, III** — satu akun per shift (I 07.00–15.00, II 15.00–23.00, III 23.00–selesai). Supervisor hanya memeriksa data shift miliknya.
+- **Shift pekerja** terisi otomatis dari jam login. Halaman login menyediakan *Pengaturan demonstrasi* untuk simulasi shift dan hari Jumat.
+- **Batas tiap tahap** dari Formulir bagian B (basis 10 ton). Pada Shift I waktu selesai dikunci; Shift II/III diperiksa durasinya. Tahap 18: 1–5 hari. Jumlah bahan > 0 dan ≤ 10.000 kg. Toleransi 0.
+- **Tingkat risiko**: Hijau (sesuai batas), Kuning (di luar batas → PPIC), Merah (kerusakan mesin → Production Manager; Tahap 8, 12, 18 → QC lalu QA). Data Merah dikunci bagi pekerja.
+- **Dashboard berbeda per tingkatan**: Production Manager (Top), PPIC dan QA (Middle), QC dan Supervisor (Lower), Workers.
+- **Unggah gambar** hanya untuk QC (wajib) dan QA (opsional).
+- Konfirmasi akhir dan penerusan ke General Manager hanya oleh Production Manager, setelah data Merah ditanggapi.
+- Kedatangan kelapa hanya pagi 07.00–08.00 (pilihan Sore dihapus); kondisi proses mendapat pilihan *Tidak Dilakukan*; hari Jumat input tidak dibuka.
+- Cadangan versi sebelum revisi: `backup/sebelum_revisi_putaran2/`.

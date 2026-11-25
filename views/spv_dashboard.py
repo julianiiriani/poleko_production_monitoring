@@ -2,9 +2,22 @@ import streamlit as st
 
 from core import data, state, ui
 
-ui.page_header("Dashboard Pengawasan", "Kondisi 18 tahapan produksi dan langkah berikutnya.")
-
 cycle = state.active_cycle()
+shift = st.session_state.shift
+ui.page_header("Dashboard Pengawasan", data.shift_name(shift))
+mine = [r for r in state.cycle_records(cycle) if r["shift"] == shift]
+lv = state.level_counts(cycle, shift)
+ui.stat_grid(
+    [
+        ("Data shift Anda", len(mine), data.ROLE_COLOR[data.ROLE_SPV], "tahap"),
+        ("Menunggu pemeriksaan Anda", sum(r["status"] in (data.S_MENUNGGU, data.S_ULANG) for r in mine), data.STATUS_STYLE[data.S_MENUNGGU][0], ""),
+        (data.LV_HIJAU, lv[data.LV_HIJAU], data.STATUS_STYLE[data.LV_HIJAU][0], ""),
+        (data.LV_KUNING, lv[data.LV_KUNING], data.STATUS_STYLE[data.LV_KUNING][0], ""),
+        (data.LV_MERAH, lv[data.LV_MERAH], data.STATUS_STYLE[data.LV_MERAH][0], ""),
+    ],
+    min_width=190,
+)
+st.subheader("Kelengkapan 18 tahapan (semua shift)")
 counts = state.status_counts(cycle)
 g = state.completeness(cycle)
 rep = state.get_report(cycle)
@@ -17,11 +30,11 @@ ui.stat_grid(
     [
         ("Tahapan sudah dicatat", valid_recorded, data.ROLE_COLOR[data.ROLE_SPV], "/ 18"),
         ("Tahapan belum dicatat", counts[data.S_BELUM], color[data.S_BELUM][0], "/ 18"),
-        ("Menunggu pemeriksaan SPV", counts[data.S_MENUNGGU], color[data.S_MENUNGGU][0], "/ 18"),
-        ("Sudah dikonfirmasi SPV", counts[data.S_KONFIRMASI], color[data.S_KONFIRMASI][0], "/ 18"),
+        ("Menunggu pemeriksaan Supervisor", counts[data.S_MENUNGGU], color[data.S_MENUNGGU][0], "/ 18"),
+        ("Sudah dikonfirmasi Supervisor", counts[data.S_KONFIRMASI], color[data.S_KONFIRMASI][0], "/ 18"),
         ("Perlu perbaikan", counts[data.S_KEMBALI], color[data.S_KEMBALI][0], "/ 18"),
-        ("Sudah diperbaiki", corrected, color[data.IN_DIPERBAIKI][0], "/ 18", "Pekerja pernah mengirim perbaikan"),
-        ("Menunggu pemeriksaan ulang SPV", counts[data.S_ULANG], color[data.S_ULANG][0], "/ 18"),
+        ("Sudah diperbaiki", corrected, color[data.IN_DIPERBAIKI][0], "/ 18"),
+        ("Menunggu pemeriksaan ulang Supervisor", counts[data.S_ULANG], color[data.S_ULANG][0], "/ 18"),
     ],
     min_width=225,
 )

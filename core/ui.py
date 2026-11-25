@@ -111,7 +111,7 @@ h3 {{ font-size: 1.15rem; margin-top: .6rem; }}
   .pk-tbl td::before {{ content: attr(data-label); flex: 0 0 34%; font-size: .72rem; text-transform: uppercase; letter-spacing: .05em; color: #475569; padding-top: 2px; }}
 }}
 
-.pk-login-brand {{ text-align: left; margin: 0 0 6px 0; }}
+.pk-login-brand {{ text-align: center; margin: 0 0 6px 0; }}
 .pk-login-brand .n {{ font-size: 2.3rem; font-weight: 800; color: {NAVY}; letter-spacing: .05em; line-height: 1.1; }}
 .pk-login-brand .s {{ font-size: 1.05rem; font-weight: 600; color: #334155; }}
 </style>
@@ -178,7 +178,7 @@ def brand(sidebar=True, width=210):
     if sidebar:
         st.markdown('<div class="pk-brand"><div class="n">POLEKO</div><div class="s">Production Monitoring System</div></div>', unsafe_allow_html=True)
     else:
-        st.markdown('<div class="pk-login-brand"><div class="n">POLEKO</div><div class="s">Production Monitoring System</div></div>', unsafe_allow_html=True)
+        st.markdown('<div class="pk-login-brand" style="text-align:center;width:100%"><div class="n">POLEKO</div><div class="s">Production Monitoring System</div></div>', unsafe_allow_html=True)
 
 
 
@@ -186,10 +186,13 @@ def brand(sidebar=True, width=210):
 def who_block():
     ss = st.session_state
     stages = ""
-    if ss.get("role") == data.ROLE_PEKERJA and ss.get("worker_id"):
+    role = ss.get("role")
+    if role == data.ROLE_PEKERJA and ss.get("worker_id"):
         no = state.worker_stage(ss.worker_id)
-        stages = f"<span>Tahapan {no:02d} — {esc(data.stage_short(no))}</span>"
-    st.markdown(f'<div class="pk-who"><b>{esc(state.actor_name())}</b><span>{esc(ss.get("role"))}</span>{stages}</div>', unsafe_allow_html=True)
+        stages = f"<span>Tahap {no:02d} — {esc(data.stage_short(no))}</span>"
+    elif role == data.ROLE_SPV and ss.get("shift"):
+        stages = f"<span>{esc(data.shift_name(ss.shift))}</span>"
+    st.markdown(f'<div class="pk-who"><b>{esc(state.actor_name())}</b><span>{esc(role)}</span>{stages}</div>', unsafe_allow_html=True)
 
 
 # ---------------------------------------------------------------- komponen halaman
@@ -261,7 +264,9 @@ def stage_grid(cycle, only=None):
 
 
 def field_rows(f, stage_no=None):
-    rows = [("Waktu mulai – selesai", state.time_text(f)), ("Durasi (dihitung otomatis)", state.duration_text(f))]
+    rows = [("Waktu mulai – selesai", state.time_text(f)), ("Durasi", state.duration_text(f))]
+    if stage_no in data.STAGE_STANDARD:
+        rows.append(("Batas", standard_text(stage_no)))
     if stage_no == data.OPENING_STAGE or f.get("arrival"):
         rows.append(("Waktu Kedatangan Bahan Baku", state.val(f.get("arrival"))))
     rows += [
@@ -270,8 +275,25 @@ def field_rows(f, stage_no=None):
         ("Kondisi proses", state.val(f.get("kondisi"))),
     ]
     if f.get("kendala"):
-        rows.append(("Kendala yang terjadi", f["kendala"]))
+        rows.append(("Kendala", f["kendala"]))
+    if f.get("mesin"):
+        rows.append(("Kerusakan mesin", "Ya"))
+    if f.get("alasan"):
+        rows.append(("Alasan", f["alasan"]))
     return rows
+
+
+def standard_text(stage_no):
+    a, b, dur, _ = data.STAGE_STANDARD[stage_no]
+    if a is None:
+        lo, hi = data.STORAGE_DAYS
+        return f"{lo}–{hi} hari"
+    nxt = " (+1 hari)" if stage_no == 3 else ""
+    return f"{a.replace(':', '.')}–{b.replace(':', '.')}{nxt} · {dur} menit"
+
+
+def level_badge(level):
+    return badge(level)
 
 
 def _field_cell(label, value):
@@ -303,13 +325,13 @@ def version_history(rec):
         with st.expander(f"Versi {i} — {v['label']} · {v['at']}{tag}", expanded=False):
             extra = [("Dikirim oleh", v.get("by") or "—")]
             if v.get("spv_note"):
-                extra.append(("Catatan SPV yang mendasari perbaikan", v["spv_note"]))
+                extra.append(("Catatan Supervisor yang mendasari perbaikan", v["spv_note"]))
             fields_block(v["data"], extra, rec["stage_no"])
 
 
 def report_stepper(status):
     """Posisi laporan pada alur: dihasilkan -> diteruskan ke Manajemen -> dikonfirmasi -> diterima General Manager (DEMO)."""
-    labels = ["Laporan gabungan dihasilkan (SPV)", "Diteruskan ke Manajemen", "Diperiksa dan dikonfirmasi Manajemen", f"Diterima {data.GM} (DEMO)"]
+    labels = ["Laporan gabungan dihasilkan (Supervisor)", "Diteruskan ke Manajemen", "Diperiksa dan dikonfirmasi Production Manager", f"Diterima {data.GM} (DEMO)"]
     current = data.REPORT_STEP.get(status, -1)
     parts = []
     for i, label in enumerate(labels):
@@ -329,7 +351,9 @@ def report_preview(rep):
             ("Dicatat oleh", s["worker_name"] + (f" · {s['versions']} versi" if s["versions"] > 1 else "")),
             ("Dikirim", s["submitted_at"]),
             ("Status pemeriksaan", s["status"]),
-            ("Dikonfirmasi SPV", f"{s['confirmed_by']} · {s['confirmed_at']}" if s["confirmed_by"] else "—"),
+            ("Dikonfirmasi Supervisor", f"{s['confirmed_by']} · {s['confirmed_at']}" if s["confirmed_by"] else "—"),
+            ("Shift", data.shift_name(s.get("shift"))),
+            ("Tingkat risiko", s.get("level", data.LV_HIJAU) + (f" → {', '.join(s['routes'])}" if s.get("routes") else "")),
         ]
         cells = "".join(_field_cell(l, v) for l, v in rows + field_rows(s["data"], s["no"]))
         blocks.append(f'<div class="pk-rep-stage"><div class="h">{s["no"]:02d}. {esc(s["name"])}</div><div class="pk-fields">{cells}</div></div>')
@@ -371,7 +395,7 @@ def events_list(events, empty="Belum ada kejadian pada sesi ini."):
 
 
 def demo_validation_label():
-    st.caption(f"ⓘ {data.DEMO_VALIDATION_LABEL}")
+    pass
 
 
 def _to_time(text):
@@ -382,55 +406,51 @@ def _index(options, value):
     return options.index(value) if value in options else None
 
 
-def input_fields(prefix, stage_no, d=None):
-    """Field input Pekerja (Revisi 03 Nov 2026 §5.3). Memakai widget biasa (bukan st.form) agar penjelasan kendala dapat
-    muncul seketika saat kondisi bukan Normal. Durasi tidak diminta: dihitung otomatis dari waktu mulai dan selesai.
-    """
+def input_fields(prefix, stage_no, d=None, shift=None):
+    """Isian Pekerja. Durasi dihitung otomatis; batas tahap diperiksa langsung saat diisi."""
     d = d or {}
-    st.markdown("**Waktu proses**")
+    storage = stage_no == data.STORAGE_STAGE
     c1, c2 = st.columns(2)
     start = c1.time_input("Waktu Mulai", value=_to_time(d.get("start")), step=300, key=f"{prefix}_start")
-    end = c2.time_input("Waktu Selesai", value=_to_time(d.get("end")), step=300, key=f"{prefix}_end")
-    overnight = st.checkbox("Selesai setelah lewat tengah malam", value=bool(d.get("overnight")), key=f"{prefix}_night")
-
-    arrival = None
-    if stage_no == data.OPENING_STAGE:  # hanya tahapan Opening
-        st.markdown("**Kedatangan bahan baku**")
-        arrival = st.selectbox(
-            "Waktu Kedatangan Bahan Baku", data.OPENING_ARRIVAL_OPTIONS, index=_index(data.OPENING_ARRIVAL_OPTIONS, d.get("arrival")),
-            placeholder="Pilih waktu kedatangan", key=f"{prefix}_arr",
-        )
-
-    st.markdown("**Jumlah produksi**")
-    kg = st.number_input(
-        "Jumlah Produksi (kg)", min_value=0.0, value=d.get("jumlah_kg"), step=1.0, format="%.2f", key=f"{prefix}_kg",
-        placeholder="Isi angka dalam kg", help="Satuan: kilogram (kg). Tidak boleh negatif.",
-    )
-
-    st.markdown("**Pelaksana dan kondisi proses**")
+    end, hari = None, None
+    if storage:
+        lo, hi = data.STORAGE_DAYS
+        hari = c2.number_input("Lama Penyimpanan (hari)", min_value=0, max_value=30, value=d.get("hari"), step=1, key=f"{prefix}_hari")
+    else:
+        end = c2.time_input("Waktu Selesai", value=_to_time(d.get("end")), step=300, key=f"{prefix}_end")
+    kg = st.number_input("Jumlah Produksi (kg)", min_value=0.0, value=d.get("jumlah_kg"), step=1.0, format="%.2f", key=f"{prefix}_kg")
     c3, c4 = st.columns(2)
-    pelaksana = c3.selectbox(
-        "Pelaksana/Pemantau", data.PELAKSANA_OPTIONS, index=_index(data.PELAKSANA_OPTIONS, d.get("pelaksana")), placeholder="Pilih satu", key=f"{prefix}_pel",
-    )
-    kondisi = c4.selectbox(
-        "Kondisi Proses", data.KONDISI_OPTIONS, index=_index(data.KONDISI_OPTIONS, d.get("kondisi")), placeholder="Pilih satu", key=f"{prefix}_kon",
-    )
-    kendala = ""
+    pelaksana = c3.selectbox("Pelaksana/Pemantau", data.PELAKSANA_OPTIONS, index=_index(data.PELAKSANA_OPTIONS, d.get("pelaksana")),
+                             placeholder="Pilih", key=f"{prefix}_pel")
+    kondisi = c4.selectbox("Kondisi Proses", data.KONDISI_OPTIONS, index=_index(data.KONDISI_OPTIONS, d.get("kondisi")),
+                           placeholder="Pilih", key=f"{prefix}_kon")
+    kendala, mesin = "", False
     if kondisi and kondisi != data.KONDISI_NORMAL:
-        kendala = st.text_area(
-            "Jelaskan Kendala yang Terjadi", value=d.get("kendala") or "", key=f"{prefix}_kend",
-            placeholder="Wajib diisi: jelaskan kendala yang dialami pada proses ini",
-        )
-    return {
+        kendala = st.text_area("Kendala", value=d.get("kendala") or "", key=f"{prefix}_kend")
+        mesin = st.checkbox("Kerusakan mesin", value=bool(d.get("mesin")), key=f"{prefix}_mesin")
+    f = {
         "start": start.strftime("%H:%M") if start else None,
         "end": end.strftime("%H:%M") if end else None,
-        "overnight": overnight,
-        "arrival": arrival,
+        "overnight": False,
+        "hari": int(hari) if hari not in (None, "") else None,
+        "arrival": data.ARRIVAL_PAGI if stage_no == data.OPENING_STAGE else None,
         "jumlah_kg": kg,
         "pelaksana": pelaksana,
         "kondisi": kondisi,
-        "kendala": kendala.strip(),
+        "kendala": (kendala or "").strip(),
+        "mesin": mesin,
+        "alasan": "",
+        "lewat_batas": False,
     }
+    shift = state.shift_from_start(f["start"]) or 1
+    issues = state.check_limits(f, stage_no, shift)
+    for i in issues:
+        st.warning(i["text"])
+    if any(i["hard"] for i in issues):
+        f["lewat_batas"] = st.checkbox("Selesai melewati batas", value=bool(d.get("lewat_batas")), key=f"{prefix}_lewat")
+    if issues:
+        f["alasan"] = st.text_area("Alasan", value=d.get("alasan") or "", key=f"{prefix}_alasan").strip()
+    return f
 
 
 def confirm_action(label, key, title, message, action, *, icon=None, type="primary", disabled=False, confirm_label="Ya, lanjutkan", on_done=None):
@@ -458,7 +478,14 @@ def confirm_action(label, key, title, message, action, *, icon=None, type="prima
 
 
 def overview_table(df):
-    table(df, badge_cols=("Status Input", "Status Pemeriksaan SPV", "Status"), max_height=640)
+    table(df, badge_cols=("Status Input", "Status Pemeriksaan Supervisor", "Status", "Tingkat Risiko"), max_height=640)
+
+
+def images_block(images, width=220):
+    if images:
+        cols = st.columns(min(len(images), 3))
+        for i, (name, blob) in enumerate(images):
+            cols[i % len(cols)].image(blob, caption=name, width=width)
 
 
 def table(df, badge_cols=(), max_height=None):
@@ -469,7 +496,7 @@ def table(df, badge_cols=(), max_height=None):
         cells = []
         for c in df.columns:
             v = row[c]
-            inner = badge(v) if c in badge_cols else esc(v)
+            inner = badge(v) if c in badge_cols and v in data.STATUS_STYLE else esc(v)
             cells.append(f'<td data-label="{html.escape(str(c))}" class="{"num" if _is_num(df[c]) else ""}">{inner}</td>')
         rows.append("<tr>" + "".join(cells) + "</tr>")
     style = f' style="max-height:{max_height}px"' if max_height else ""

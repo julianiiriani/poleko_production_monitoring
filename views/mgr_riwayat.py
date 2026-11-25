@@ -18,7 +18,7 @@ ui.table(
             {
                 "Laporan": r["report_id"],
                 "Status": r["status"],
-                "Diterima dari SPV": f"{r['handoff_by']} · {r['handoff_at']}",
+                "Diterima dari Supervisor": f"{r['handoff_by']} · {r['handoff_at']}",
                 "Diperiksa dan dikonfirmasi oleh": f"{r['confirmed_by']} · {r['confirmed_at']}" if r["confirmed_by"] else "—",
                 f"Diteruskan ke {data.GM} oleh": f"{r['forwarded_by']} · {r['forwarded_at']}" if r["forwarded_by"] else "—",
             }
@@ -29,10 +29,10 @@ ui.table(
 )
 returns = [(r["report_id"], x) for r in visible for x in r["returns"]]
 if returns:
-    st.subheader("Catatan perbaikan ke SPV")
+    st.subheader("Catatan perbaikan ke Supervisor")
     ui.table(
         pd.DataFrame(
-            [{"Laporan": rid, "Waktu": x["at"], "Dari": x["by"], "Catatan": x["note"], "Tanggapan SPV": x.get("response") or "Belum ditanggapi"} for rid, x in returns]
+            [{"Laporan": rid, "Waktu": x["at"], "Dari": x["by"], "Catatan": x["note"], "Tanggapan Supervisor": x.get("response") or "Belum ditanggapi"} for rid, x in returns]
         )
     )
 st.subheader("Kejadian")

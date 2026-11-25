@@ -3,7 +3,7 @@ import streamlit as st
 
 from core import data, state, ui
 
-ui.page_header("Laporan Gabungan", "Laporan hasil penggabungan 18 tahapan yang sudah dikonfirmasi SPV.")
+ui.page_header("Laporan Gabungan", "Laporan hasil penggabungan 18 tahapan yang sudah dikonfirmasi Supervisor.")
 
 cycle = state.active_cycle()
 rep = state.get_report(cycle)
@@ -45,7 +45,7 @@ elif rep["status"] == data.R_PERBAIKAN:
         ui.go("views/spv_validasi.py", "Buka Validasi Laporan", ":material/fact_check:")
     else:
         st.write("Tahapan yang perlu diperbaiki dapat dibuka kembali lewat Validasi Laporan (Hubungi Pekerja). Bila sudah selesai, kirim laporan kembali.")
-        response = st.text_area("Tanggapan SPV", key=f"lap_resp_{len(rep['versions'])}", placeholder="Jelaskan perbaikan atau pemeriksaan ulang yang Anda lakukan (wajib diisi)")
+        response = st.text_area("Tanggapan Supervisor", key=f"lap_resp_{len(rep['versions'])}", placeholder="Jelaskan perbaikan atau pemeriksaan ulang yang Anda lakukan (wajib diisi)")
         ui.confirm_action(
             "Kirim Ulang ke Manajemen", "lap_resend", "Kirim Ulang ke Manajemen",
             "Laporan gabungan versi terbaru akan dikirim kembali ke Manajemen untuk diperiksa ulang. Versi sebelumnya tetap tersimpan. Lanjutkan?",
@@ -63,7 +63,7 @@ ui.report_preview(rep)
 st.subheader("Riwayat versi laporan")
 ui.table(
     pd.DataFrame(
-        [{"Versi": v["no"], "Jenis": v["kind"], "Waktu": v["at"], "Oleh": v["by"], "Tanggapan SPV": v["note"] or "—"} for v in rep["versions"]]
+        [{"Versi": v["no"], "Jenis": v["kind"], "Waktu": v["at"], "Oleh": v["by"], "Tanggapan Supervisor": v["note"] or "—"} for v in rep["versions"]]
     )
 )
 if rep["returns"]:
@@ -71,7 +71,7 @@ if rep["returns"]:
     ui.table(
         pd.DataFrame(
             [
-                {"Waktu": r["at"], "Dari": r["by"], "Catatan": r["note"], "Tanggapan SPV": r.get("response") or "Belum ditanggapi"}
+                {"Waktu": r["at"], "Dari": r["by"], "Catatan": r["note"], "Tanggapan Supervisor": r.get("response") or "Belum ditanggapi"}
                 for r in rep["returns"]
             ]
         )

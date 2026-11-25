@@ -2,7 +2,7 @@ import streamlit as st
 
 from core import data, state, ui
 
-ui.page_header("Penerusan ke General Manager", "Teruskan laporan yang sudah dikonfirmasi Manajemen.")
+ui.page_header("Penerusan ke General Manager", "Hanya Production Manager (Top) yang meneruskan laporan yang sudah dikonfirmasi.")
 
 
 @st.dialog("Laporan Berhasil Diteruskan")
@@ -51,7 +51,12 @@ def _after(ok, msg):
         ui.flash_message("error", msg)
 
 
-if rep["status"] == data.R_KONFIRMASI:
+pending = state.red_pending(cycle)
+if rep["status"] == data.R_KONFIRMASI and pending:
+    st.button("Teruskan ke General Manager", disabled=True, icon=":material/forward_to_inbox:")
+    st.warning("Data risiko tinggi (Merah) belum selesai ditanggapi: " + "; ".join(pending) + ".")
+    ui.go("views/mgr_tindak_lanjut.py", "Buka Kendala Mesin", ":material/assignment_late:", type="secondary")
+elif rep["status"] == data.R_KONFIRMASI:
     st.write(f"Penerusan akan dicatat atas nama **{actor}**. Tombol hanya dapat digunakan satu kali untuk satu laporan.")
     ui.confirm_action(
         "Teruskan ke General Manager", "gm_forward", "Teruskan ke General Manager",
@@ -65,5 +70,5 @@ elif rep["status"] == data.R_GM:
     )
 else:
     st.button("Teruskan ke General Manager", disabled=True, icon=":material/forward_to_inbox:")
-    st.warning("Laporan harus diperiksa dan dikonfirmasi Manajemen lebih dulu sebelum dapat diteruskan.")
+    st.warning("Laporan harus diperiksa dan dikonfirmasi Production Manager lebih dulu sebelum dapat diteruskan.")
     ui.go("views/mgr_konfirmasi.py", "Buka Pemeriksaan dan Konfirmasi", ":material/task_alt:")

@@ -8,9 +8,10 @@ if goto:  # setelah Generate Report berhasil, langsung ke Laporan Gabungan (pesa
     ss["_flash"] = goto[1]
     st.switch_page(goto[0])
 
-ui.page_header("Validasi Laporan", "Periksa setiap tahapan secara individual, lalu Generate Report setelah 18 tahapan terkonfirmasi.")
+ui.page_header("Validasi Laporan")
 
 cycle = state.active_cycle()
+shift = ss.shift
 g = state.completeness(cycle)
 rep = state.get_report(cycle)
 actor = state.actor_name()
@@ -19,7 +20,7 @@ def _open_contact(n):
     ss[f"val_contact_{n}"] = True
 
 
-st.progress(len(g["confirmed"]) / 18, text=f"{len(g['confirmed'])} dari 18 tahapan sudah dikonfirmasi SPV")
+st.progress(len(g["confirmed"]) / 18, text=f"{len(g['confirmed'])} dari 18 tahapan sudah dikonfirmasi Supervisor")
 
 # ------------------------------------------------------------ 1. pemeriksaan per tahapan
 st.subheader("1. Pemeriksaan per tahapan")
@@ -27,8 +28,18 @@ pick = ss.pop("_val_pick", None)
 if pick in data.STAGE_NOS:
     ss["val_stage"] = pick
 elif "val_stage" not in ss:
-    ss["val_stage"] = next((n for n in data.STAGE_NOS if state.stage_status(cycle, n) in (data.S_MENUNGGU, data.S_ULANG)), 1)
-stage_labels = {n: f"{data.stage_label(n)} — {state.stage_status(cycle, n)}" for n in data.STAGE_NOS}
+    ss["val_stage"] = next((n for n in data.STAGE_NOS if state.stage_status(cycle, n) in (data.S_MENUNGGU, data.S_ULANG)
+                            and state.get_record(cycle, n)["shift"] == shift), 1)
+
+
+def _lab(n):
+    r = state.get_record(cycle, n)
+    if r and r["shift"] != shift:
+        return f"{data.stage_label(n)} — {data.shift_name(r['shift'])} (shift lain)"
+    return f"{data.stage_label(n)} — {state.stage_status(cycle, n)}" + (f" · {r['level'].split(' — ')[0]}" if r else "")
+
+
+stage_labels = {n: _lab(n) for n in data.STAGE_NOS}
 no = st.selectbox("Pilih tahapan", data.STAGE_NOS, key="val_stage", format_func=stage_labels.get)
 rec = state.get_record(cycle, no)
 wid = state.worker_for_stage(no)
@@ -46,8 +57,15 @@ ui.kv(
 if not rec:
     st.info(f"Belum ada laporan untuk tahapan ini. Menunggu penginputan {state.worker_name(wid)}; hubungi pekerja tersebut agar segera menginput.")
     st.button("Konfirmasi Tahapan", disabled=True, key="val_cf_off")
-    st.caption("Konfirmasi dan permintaan perbaikan baru tersedia setelah Pekerja mengirim laporan.")
+elif rec["shift"] != shift:
+    st.info(f"Diperiksa oleh {data.SHIFTS[rec['shift']][3]}.")
 else:
+    ui.kv([("Shift", data.shift_name(rec["shift"])), ("Tingkat risiko", ("badge", rec["level"])),
+           ("Diarahkan ke", ", ".join(state.route_targets(rec)) or "—")])
+    for i in rec.get("issues", []):
+        st.warning(f"{i['kind']}: {i['text']}")
+    if rec["level"] == data.LV_MERAH:
+        st.error("Data Merah dikunci. Setelah dikonfirmasi, data diteruskan ke " + ", ".join(state.route_targets(rec)) + ".")
     ui.fields_block(rec["data"], stage_no=no)
     if len(rec["versions"]) > 1:
         st.markdown(f"**Riwayat versi ({len(rec['versions'])} versi) — buka versi terbaru atau sebelumnya**")
@@ -63,7 +81,7 @@ else:
         if rep and rep["status"] != data.R_PERBAIKAN:
             st.caption("Laporan gabungan sudah dihasilkan; tahapan ini tidak dapat diubah.")
     elif status == data.S_KEMBALI:
-        st.warning(f"Menunggu perbaikan dari {rec['worker_name']}. Catatan SPV: {rec['spv_note']}")
+        st.warning(f"Menunggu perbaikan dari {rec['worker_name']}. Catatan Supervisor: {rec['spv_note']}")
     elif status == data.S_ULANG:
         st.info("Pekerja sudah mengirim perbaikan. Periksa versi terbaru, lalu konfirmasi atau kirim catatan perbaikan berikutnya.")
 
@@ -120,5 +138,3 @@ else:
         "Seluruh 18 tahapan sudah dikonfirmasi. Laporan gabungan akan dibuat satu kali untuk siklus ini dan tahapan terkunci. Lanjutkan?",
         lambda: state.generate_report(cycle, actor), icon=":material/summarize:", disabled=not g["ready"], on_done=_on_generated,
     )
-    if not g["ready"]:
-        st.caption("Tombol aktif setelah seluruh 18 tahapan dikonfirmasi SPV dan tidak ada tugas perbaikan yang terbuka.")
